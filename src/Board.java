@@ -1,3 +1,6 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionListener;
 import java.util.Random;
 
 /**
@@ -7,83 +10,168 @@ import java.util.Random;
  * @author Nikas Marios.
  * @version 3
  */
-public class Board {
+public class Board extends JPanel {
 
-    private int row; // Number of board's rows.
-    private int col; // Number of board's columns.
-    private int numOfCardsMatching; // Number of cards matching in our board.
-    private Card[][] board; // The board.
+    private final int rows;
+    private final int cols;
+    private final int cardsToPick;
+    private final int numOfSameCards;
+    private ImageIcon[] cardIcons; // Array for storing the images.
+    private Card[] board;
+
 
     /**
-     * Constructor initializes the row, the col and the numOfCardsMatching based on the gameMode selected by the user.
-     * After that we use the method createBoard to create a two dimensional array filled with Card objects
-     * and we use the UI method printNextBoard to show the user his/her starting gameBoard.
-     * @param gameMode Its the gameMode picked by the user through UI.
+     * Constructor initializes the row, the col,the numOfSameCards and the cardsToPick based on the gameMode selected by the user.
+     *
+     * @param gameMode Its the gameMode picked by the user through GUI.
      */
     public Board(int gameMode) {
+        super();
         switch (gameMode) {
-            case 1:
-                row = 4;
-                col = 6;
-                numOfCardsMatching = 12;
+            case 3:
+                rows = 6;
+                cols = 4;
+                numOfSameCards = 24;
+                cardsToPick = 1;
                 break;
             case 2:
-                row = 6;
-                col = 8;
-                numOfCardsMatching = 24;
+                rows = 6;
+                cols = 6;
+                numOfSameCards = 12;
+                cardsToPick = 3;
                 break;
-            case 3:
-                row = 6;
-                col = 6;
-                numOfCardsMatching = 12;
+            case 1:
+                rows = 6;
+                cols = 8;
+                numOfSameCards = 24;
+                cardsToPick = 2;
+                break;
+            default:
+                rows = 4;
+                cols = 6;
+                numOfSameCards = 12;
+                cardsToPick = 2;
                 break;
         }
         createBoard();
-        Messages.startingBoardMessage();
-        UI.printNextBoard(board);
     }
 
     /**
      * Creates the Board.
      */
     private void createBoard() {
-        // Array with the letters we will need to fill the Board.
-        char[] chars = new char[numOfCardsMatching];
-        for (int i = 0; i < numOfCardsMatching; i++) {
-            chars[i] = (char) (i + 65);
+        board = new Card[rows * cols];
+        cardIcons = getCardIcons();
+        makePanel();
+    }
+
+    /**
+     * Initializes the images that we will use for the cards
+     *
+     * @return an array of Images
+     */
+    private ImageIcon[] getCardIcons() {
+        ImageIcon[] icons = new ImageIcon[numOfSameCards];
+        for (int i = 0; i < numOfSameCards; i++) {
+            String filename = "images/card" + (i + 1) + ".jpg";
+            icons[i] = new ImageIcon(filename);
         }
-        // Array filled with the empty slots in our Board(e.g. for a 4x6 matrix we have: 00,01,02,03,04,05,10,11,12,13,14,15,20,21 etc.).
-        int[] emptySlots = new int[row * col];
-        int counter = 0; // Helps us with the changing of the rows.
-        for (int i = 0; i < row; i++) {
-            for (int j = 0; j < col; j++) {
-                emptySlots[(counter * col) + j] = (i * 10) + j;
+        return icons;
+    }
+
+    /**
+     * Makes the panel that will be used to facilitate the cards
+     */
+    private void makePanel() {
+        this.setLayout(new GridLayout(rows, cols, 10, 10));
+        int[] cardsToAdd = new int[(rows * cols)];
+        for (int i = 0; i < numOfSameCards; i++) {
+            for (int j = 0; j < cardsToPick; j++) {
+                cardsToAdd[cardsToPick * i + j] = i;
             }
-            counter++;
-            }
-        //
-        board = new Card[row][col];
-        int numOfDelEls = 0; // Number of deleted elements from the emptySlots array.
-        for (int i = 0; i < numOfCardsMatching; i++) {
-            Random r = new Random(); // Used to access a random emptySlots element.
-            for (int j = 0; j < Gameplay.getCardsToPick(); j++) {
-                int x = r.nextInt(row * col - numOfDelEls);
-                // rRow is the random row generated. We get it by dividing the emptySlots element(e.g. 34) by 10(3).
-                int rRow = emptySlots[x] / 10;
-                // rCol is the random column generated. We get it by taking the mod of the emptySlots element(34) by 10(4).
-                int rCol = emptySlots[x] % 10;
-                board[rRow][rCol] = new Card(chars[i]);
-                if ((row * col) - (numOfDelEls + 1) - x >= 0)
-                    // So we never choose a row and column combination we already placed a letter in.
-                    System.arraycopy(emptySlots, x + 1, emptySlots, x, (row * col) - (numOfDelEls + 1) - x);
-                numOfDelEls++; // Each time we get a random number(r) the bound is smaller by one.
-            }
+        }
+        randomizeCardsToAdd(cardsToAdd);
+        for (int i = 0; i < cardsToAdd.length; i++) {
+            Card newCard = new Card(cardIcons[cardsToAdd[i]], cardsToAdd[i]);
+            board[i] = newCard;
+            this.add(newCard);
         }
     }
 
     /**
-     * Method returns the board.
-     * @return board : The two dimensional array filled with Card objects.
+     * Randomizes the given array.
+     *
+     * @param array an array of integers
      */
-    public Card[][] getBoard() { return board; }
+    private void randomizeCardsToAdd(int[] array) {
+        Random r = new Random();
+        // Do random swaps between elements.
+        for (int i = 0; i < array.length; i++) {
+            int s = r.nextInt(array.length);
+            int temp = array[s];
+            array[s] = array[i];
+            array[i] = temp;
+        }
+
+    }
+
+    /**
+     * Sets an action to be done when a card from the board is clicked
+     *
+     * @param handler an ActionListener for the cards
+     */
+    public void setActionListener(ActionListener handler) {
+        for (Card c : board) {
+            c.addActionListener(handler);
+        }
+    }
+
+    /**
+     * Sets all the cards of the board clickable or unclickable
+     *
+     * @param bool a boolean value that dictates whether the cards of the board will be clickable or not
+     */
+    public void setClickable(boolean bool) {
+        for (Card c : board) {
+            c.setClickable(bool);
+        }
+    }
+
+    /**
+     * Getter for the created board
+     *
+     * @return an array of Cards representing the board
+     */
+    public Card[] getBoard() {
+        return board;
+    }
+
+    /**
+     * Returns true if the board contains the given card
+     *
+     * @param card a Card object that we want to determine whether its contained on the board or not.
+     * @return a boolean value that represents whether the given card is in the board or not
+     */
+    public boolean contains(Card card) {
+        for (Card c : board) {
+            if (card == c) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Returns true if the board has already a face-up card
+     *
+     * @return a boolean value that represents whether or not there is a face-up card in the board
+     */
+    public boolean hasFaceUpCard() {
+        for (Card c : board) {
+            if (c.isFaceUp()) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
